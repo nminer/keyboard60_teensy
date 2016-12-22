@@ -66,11 +66,12 @@ void loop() {
 /* presses the key for the given row and column */
 void checkPressKey(int r, int c) {
   if (pressedCount < 6 && pressedKeys[r * 14 + c] != true) {
-      if (keys[r * 14 + c] == 'F') { // if the key being pressed is a function key
-        Keyboard.releaseAll();
-        clearAllPressed();
-        pressedCount = 0;
-      }
+    if (keys[r * 14 + c] == 'F') { // if the key being pressed is a function key
+      Keyboard.releaseAll();
+      clearAllPressed();
+      pressedCount = 0;
+      addKey(r, c);
+    } else {
       checkFunctionKeyPressed();
       if (funcKeyPressed) {
         Keyboard.press(funkeys[r * 14 + c]);
@@ -78,23 +79,26 @@ void checkPressKey(int r, int c) {
         Keyboard.press(keys[r * 14 + c]);
       }
       addKey(r, c);
+    }
   }
 }
 
 /* Releases the key for the given row and column */
 void checkReleaseKey(int r, int c) {
   if (pressedKeys[r * 14 + c] == true) {
-    checkFunctionKeyPressed();
-    if (funcKeyPressed) {
-      Keyboard.release(funkeys[r * 14 + c]);
-    } else {
-      Keyboard.release(keys[r * 14 + c]);
-    }
-    removeKey(r, c);
     if (keys[r * 14 + c] == 'F') { // if the key being released is a function key
       Keyboard.releaseAll();
       clearAllPressed();
       pressedCount = 0;
+          removeKey(r, c);
+    } else {
+      checkFunctionKeyPressed();
+      if (funcKeyPressed) {
+        Keyboard.release(funkeys[r * 14 + c]);
+      } else {
+        Keyboard.release(keys[r * 14 + c]);
+      }
+      removeKey(r, c);
     }
   }
 }
