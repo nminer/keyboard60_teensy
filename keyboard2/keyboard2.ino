@@ -17,8 +17,8 @@ bool useCapsLed = false; // set to true if using led when caplocks is on.
 int maxKeysPressed = 6; // Set to the maximum number of keys that can be pressed at a time.
 
 // Sets number of times to loop and read a pin to decreases the number of false positives. 
-int keyPressDebounce = 1; // I could not set this to high or it would always read false at some point.
-int keyReleaseDebounce = 2;
+int keyPressDebounce = 5; // I could not set this to high or it would always read false at some point.
+int keyReleaseDebounce = 5;
 
 /*****************************************************************
 *                       to set a macro.                          *
@@ -236,6 +236,7 @@ void capsCheck() {
  */
 bool debouncePress(int r) {
   for(int i = 0; i < keyPressDebounce; i++) {
+    delay(1);
     if (digitalRead(Row[r]) != HIGH) {
       return false;
     }
@@ -250,6 +251,7 @@ bool debouncePress(int r) {
  */
 bool debounceRelease(int r) {
   for(int i = 0; i < keyReleaseDebounce; i++) {
+    delay(1);
     if (digitalRead(Row[r]) != LOW) {
       return false;
     }
