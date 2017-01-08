@@ -8,17 +8,27 @@
 int Column[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
 // Array for the pins for all the rows.
 int Row[] = {16, 17, 18, 19, 20};
+// set the column and row size to the size (number of elements in the column and row arrays.
+//There is no semicolon after the #define statement
+#define COLUMN_SIZE 14
+#define ROW_SIZE 5
 
 // caplocks led pin.
 const int capsLedPin = 21;
 bool useCapsLed = false; // set to true if using led when caplocks is on. 
 
+// led pin.
+const int ledPin = 22; // set to pin for the leds on/off.
+bool startWithLedsOn = true; // set to true to start with leds on false to srart with them off.
+bool useLeds = false; // set to true if using leds in the keyboard.
+
 // keys set up.
 int maxKeysPressed = 6; // Set to the maximum number of keys that can be pressed at a time.
 
 // Sets number of times to loop and read a pin to decreases the number of false positives. 
-int keyPressDebounce = 5; // I could not set this to high or it would always read false at some point.
-int keyReleaseDebounce = 5;
+int keyPressDebounce = 1; // I could not set this to high or it would always read false at some point.
+int keyReleaseDebounce = 1;
+int debounceDelay = 1; // the delay in t he debounce loop in ms.
 
 /*****************************************************************
 *                       to set a macro.                          *
@@ -47,10 +57,13 @@ int keyReleaseDebounce = 5;
 * KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12              *
 *                                                                *
 *****************************************************************/
-// All the keys when function key is not pressed.
 // 'F' for function key
 // 'M' Macro key 
-int keys[] = {'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', KEY_BACKSPACE,
+/* All cap char are reserved for special keys */
+// 'L' Led on/off and on key
+
+// All the keys when function key is not pressed.
+int keys[] = {KEY_ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', KEY_BACKSPACE,
               KEY_TAB, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',
               KEY_CAPS_LOCK, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 'J', KEY_RETURN,
               KEY_LEFT_SHIFT, 'A', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 'I', KEY_RIGHT_SHIFT,
@@ -58,9 +71,9 @@ int keys[] = {'`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', K
              };
 
 // Array of all the keys when function key has been pressed.
-int funkeys[] = {KEY_F1, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12, KEY_DELETE,
+int funkeys[] = {'`', KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12, KEY_DELETE,
                  KEY_TAB, 'q', KEY_UP_ARROW, 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\',
-                 KEY_CAPS_LOCK, KEY_LEFT_ARROW, KEY_DOWN_ARROW, KEY_RIGHT_ARROW, 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', ' ', KEY_RETURN,
+                 KEY_CAPS_LOCK, KEY_LEFT_ARROW, KEY_DOWN_ARROW, KEY_RIGHT_ARROW, 'f', 'g', 'h', 'j', 'k', 'L', ';', '\'', ' ', KEY_RETURN,
                  KEY_LEFT_SHIFT, ' ', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', ' ', KEY_RIGHT_SHIFT,
                  KEY_LEFT_CTRL, KEY_LEFT_GUI, KEY_LEFT_ALT, ' ', ' ', ' ', ' ', ' ', ' ', ' ', KEY_RIGHT_ALT, 'F', 'M', KEY_LEFT_CTRL
                 };
@@ -68,17 +81,17 @@ int funkeys[] = {KEY_F1, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7,
 /////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////// Global vars - dont change //////////////////////////////////
 
-bool pressedKeys[70];             // Keep track of what keys are pressed.
-bool pressedFunMacroKey[70];
-bool pressedMacroKey[70];
+bool pressedKeys[COLUMN_SIZE * ROW_SIZE];             // Keep track of what keys are pressed.
+bool pressedFunMacroKey[COLUMN_SIZE * ROW_SIZE];
+bool pressedMacroKey[COLUMN_SIZE * ROW_SIZE];
 int pressedCount = 0;             // Keep track of how many keys are pressed.
 
 // Array that points to the function keys
 // (this should stary the same on both the keys[] and the funkeys marked with F char.
-int functionKey[] = {67};
-int numberOfFunKeys = 1; // Set to the size of the array does not like the sizeof.
-int macroKey[] = {68};
-int numberOfMacKeys = 1; // Set to the size of the array does not like the sizeof.
+int functionKey[COLUMN_SIZE * ROW_SIZE];
+int numberOfFunKeys = 0; // Set to the size of the array does not like the sizeof.
+int macroKey[COLUMN_SIZE * ROW_SIZE];
+int numberOfMacKeys = 0; // Set to the size of the array does not like the sizeof.
 
 bool macroRecordMode = false;     // Set to true when in macro record mode is on.
 int activeMacro = 11;             // hold the active macro being recorded.
@@ -94,12 +107,12 @@ bool activeMacroReless = false;   // set to true when active macro num key gets 
 /* Set all the pins for input andout put. */
 void setup() {
   //set all the columns to outpur and set them low to start.
-  for (int i = 0; i < 15; i++) {
+  for (int i = 0; i < COLUMN_SIZE; i++) {
     pinMode(Column[i], OUTPUT);
     digitalWrite(Column[i], LOW);
   }
   //set all the rows to input.
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < ROW_SIZE; i++) {
     pinMode(Row[i], INPUT);
     digitalWrite(Row[i], LOW);
   }
@@ -108,16 +121,44 @@ void setup() {
   if (useCapsLed) {
     pinMode(capsLedPin, OUTPUT);
   }
+  if (useLeds) {
+    pinMode(ledPin, OUTPUT);
+    if (startWithLedsOn) {
+      digitalWrite(ledPin, HIGH);
+    } else {
+      digitalWrite(ledPin, LOW);
+    }
+  }
+  //find the 'F' and 'M' keys.
+  setSpecialKeys();
+}
+
+//------------------------------ setSpecialKeys() ------------------------------
+/* find all the 'F' and 'M' keys for fast checking if they are pressed.
+ *  called in setup.
+ */
+void setSpecialKeys() {
+  numberOfFunKeys = 0;
+  numberOfMacKeys = 0;
+  for (int i = 0; i < COLUMN_SIZE * ROW_SIZE; i++) {
+    if (keys[i] == 'F') {
+      functionKey[numberOfFunKeys] = i;
+      numberOfFunKeys++;
+    } else if (keys[i] == 'M') {
+      macroKey[numberOfMacKeys] = i;
+      numberOfMacKeys++;
+    }   
+  }
 }
 
 //-------------------------------- loop() -------------------------------------
 /* loop to check for any keys pressed or released */
 void loop() {
-  for (int c = 0; c < 14; c++) {
+  for (int c = 0; c < COLUMN_SIZE; c++) {
     // turn the current column output on.
     digitalWrite(Column[c], HIGH);
     //delay(10);
-    for (int r = 0; r < 5 ; r++) {
+    for (int r = 0; r < ROW_SIZE; r++) {
       //read each row for a key press.
       if (digitalRead(Row[r]) == HIGH && debouncePress(r)) {
         checkPressKey(r, c);
@@ -134,13 +175,13 @@ void loop() {
 /* presses the key for the given row and column */
 void checkPressKey(int r, int c) {
   // check to make sure we have not pessed to many keys and key is not pessed yet.
-  if (pressedCount < maxKeysPressed && pressedKeys[r * 14 + c] != true) { 
-    if (keys[r * 14 + c] == 'F') { // if the key being pressed is a function key.
+  if (pressedCount < maxKeysPressed && pressedKeys[r * COLUMN_SIZE + c] != true) { 
+    if (keys[r * COLUMN_SIZE + c] == 'F') { // if the key being pressed is a function key.
       Keyboard.releaseAll();
       clearAllPressed();
       pressedCount = 0;
       addKey(r, c);
-    } else if (keys[r * 14 + c] == 'M') {  // if the key being pressed is the macro key.
+    } else if (keys[r * COLUMN_SIZE + c] == 'M') {  // if the key being pressed is the macro key.
       Keyboard.releaseAll();
       clearAllPressed();
       pressedCount = 0;
@@ -151,25 +192,36 @@ void checkPressKey(int r, int c) {
       macroRecordMode = false;
     } else {
       if (checkFunctionKeyPressed()) {
-        if (!macroRecordMode && checkMacroKeyPressed() && isNumKey(funkeys[r * 14 + c])) { 
-          playMacro(keys[r * 14 + c]);
-        } else if (!macroRecordMode && checkMacroKeyPressed() && funkeys[r * 14 + c] == 'r') {
+        if (!macroRecordMode && checkMacroKeyPressed() && isNumKey(funkeys[r * COLUMN_SIZE + c])) { 
+          playMacro(keys[r * COLUMN_SIZE + c]);
+        } else if (!macroRecordMode && checkMacroKeyPressed() && funkeys[r * COLUMN_SIZE + c] == 'r') {
           macroRecordMode = true;
         } else {
-          Keyboard.press(funkeys[r * 14 + c]);
+          if (isCapChar(funkeys[r * COLUMN_SIZE + c])) {
+             // special keys
+             if (funkeys[r * COLUMN_SIZE + c] = 'L') { //led key.
+              ledOnOff();
+             }
+          } else {
+            Keyboard.press(funkeys[r * COLUMN_SIZE + c]);
+          }
           if (macroRecordMode) {
-            recoredKeystroke(r * 14 + c, true);
+            recoredKeystroke(r * COLUMN_SIZE + c, true);
           }
         }
       } else {
-        if (!macroRecordMode && checkMacroKeyPressed() && isNumKey(keys[r * 14 + c])) { 
-          playMacro(keys[r * 14 + c]);
-        } else if (!macroRecordMode && checkMacroKeyPressed() && keys[r * 14 + c] == 'r') {
+        if (!macroRecordMode && checkMacroKeyPressed() && isNumKey(keys[r * COLUMN_SIZE + c])) { 
+          playMacro(keys[r * COLUMN_SIZE + c]);
+        } else if (!macroRecordMode && checkMacroKeyPressed() && keys[r * COLUMN_SIZE + c] == 'r') {
           macroRecordMode = true;
         } else {
-          Keyboard.press(keys[r * 14 + c]);
+          if (isCapChar(keys[r * COLUMN_SIZE + c])) {
+             // special keys
+          } else {
+            Keyboard.press(keys[r * COLUMN_SIZE + c]);
+          }
           if (macroRecordMode) {
-            recoredKeystroke(r * 14 + c, false);
+            recoredKeystroke(r * COLUMN_SIZE + c, false);
           }
         }
       }
@@ -181,34 +233,42 @@ void checkPressKey(int r, int c) {
 //-------------------- checkReleaseKey(int, int) --------------------------------
 /* Releases the key for the given row and column */
 void checkReleaseKey(int r, int c) {
-  if (pressedKeys[r * 14 + c] == true && debounceRelease(r)) {
-    if (keys[r * 14 + c] == 'F') { // if the key being released is a function key
+  if (pressedKeys[r * COLUMN_SIZE + c] == true && debounceRelease(r)) {
+    if (keys[r * COLUMN_SIZE + c] == 'F') { // if the key being released is a function key
       Keyboard.releaseAll();
       clearAllPressed();
       pressedCount = 0;
       removeKey(r, c);
-    } else if (keys[r * 14 + c] == 'M') {
+    } else if (keys[r * COLUMN_SIZE + c] == 'M') {
       Keyboard.releaseAll();
       clearAllPressed();
       pressedCount = 0;
       removeKey(r, c);
     } else {
       if (checkFunctionKeyPressed()) { // function key is pressed so release from funkeys.
-        Keyboard.release(funkeys[r * 14 + c]);
+        if (isCapChar(funkeys[r * COLUMN_SIZE + c])) {
+           // special funkeys release
+        } else {
+          Keyboard.release(funkeys[r * COLUMN_SIZE + c]);
+        }
         if (macroRecordMode && tempMacroSize >= 0) {
-          if (!activeMacroReless && activeMacro == funkeys[r * 14 + c]) { // ignore first release
+          if (!activeMacroReless && activeMacro == funkeys[r * COLUMN_SIZE + c]) { // ignore first release
             activeMacroReless = false;
           } else {
-            recoredKeystroke(r * 14 + c, true);
+            recoredKeystroke(r * COLUMN_SIZE + c, true);
           }
         }
       } else { // relsease from keys becouse function key is NOT pressed.
-        Keyboard.release(keys[r * 14 + c]);
+        if (isCapChar(keys[r * COLUMN_SIZE + c])) {
+           // special keys release
+        } else {
+          Keyboard.release(keys[r * COLUMN_SIZE + c]);
+        }
         if (macroRecordMode && tempMacroSize >= 0) {
-          if (!activeMacroReless && activeMacro == keys[r * 14 + c]) { // ignore first release
+          if (!activeMacroReless && activeMacro == keys[r * COLUMN_SIZE + c]) { // ignore first release
             activeMacroReless = false;
           } else {
-            recoredKeystroke(r * 14 + c, false);
+            recoredKeystroke(r * COLUMN_SIZE + c, false);
           }
         }
       }
@@ -229,6 +289,14 @@ void capsCheck() {
   }
 }
 
+//------------------------------ ledOnOff() -----------------------------------
+/* turn on and off the keyboard leds. */
+void ledOnOff() {
+  if (useLeds) {
+    digitalWrite(ledPin, !digitalRead(ledPin));
+  }
+}
+
 //------------------------- debouncePress(int) --------------------------------
 /*  return true if for all the loops it reads high.
  *  The numbers of loops is determined by
@@ -236,7 +304,7 @@ void capsCheck() {
  */
 bool debouncePress(int r) {
   for(int i = 0; i < keyPressDebounce; i++) {
-    delay(1);
+    delay(debounceDelay);
     if (digitalRead(Row[r]) != HIGH) {
       return false;
     }
@@ -251,7 +319,7 @@ bool debouncePress(int r) {
  */
 bool debounceRelease(int r) {
   for(int i = 0; i < keyReleaseDebounce; i++) {
-    delay(1);
+    delay(debounceDelay);
     if (digitalRead(Row[r]) != LOW) {
       return false;
     }
@@ -262,14 +330,14 @@ bool debounceRelease(int r) {
 //-------------------------- addKey(int, int) --------------------------------
 /* set the givin key to true in the pressed array. pressedKeys[] */
 void addKey(int r, int c) {
-  pressedKeys[r * 14 + c] = true;
+  pressedKeys[r * COLUMN_SIZE + c] = true;
   pressedCount++;
 }
 
 //--------------------------- removeKey(int, int) ----------------------------
 /*  set the givin key to false in the pressed array. pressedKeys[] */
 void removeKey(int r, int c) {
-  pressedKeys[r * 14 + c] = false;
+  pressedKeys[r * COLUMN_SIZE + c] = false;
   pressedCount--;
   if (pressedCount < 0) { // just ot make sure we dont go to -.
     pressedCount = 0;
@@ -301,7 +369,7 @@ bool checkMacroKeyPressed() {
 //--------------------------- clearAllPressed() -------------------------------
 /* sets all the set all the pressedKeys to false. */
 void clearAllPressed() {
-  for (int i = 0; i < 70; i++) {
+  for (int i = 0; i < COLUMN_SIZE * ROW_SIZE; i++) {
     pressedKeys[i] = false;
   }
 }
@@ -309,10 +377,16 @@ void clearAllPressed() {
 //-------------------------- clearAllPressedMacro() ---------------------------
 /* clear all the macropressed keys */
 void clearAllPressedMacro() {
-  for (int i = 0; i < 70; i++) {
+  for (int i = 0; i < COLUMN_SIZE * ROW_SIZE; i++) {
     pressedFunMacroKey[i] = false;
     pressedMacroKey[i] = false;
   }
+}
+
+//---------------------------- isCapKey(int) ----------------------------------
+/* return true if the char passed in is A-Z caps. */
+bool isCapChar(int key) {
+  return ('A' <= key && key <= 'Z');
 }
 
 //-----------------------------isNumKey(int) ----------------------------------
@@ -405,7 +479,7 @@ void playMacro(int macroNum) {
         tempkey -= 100;
         isfkey = true;
       }
-      if (tempkey >= 0 && tempkey < 70) { // make sure we are a key on the keyboard.
+      if (tempkey >= 0 && tempkey < COLUMN_SIZE * ROW_SIZE) { // make sure we are a key on the keyboard.
         if (isfkey) {
           if (pressedFunMacroKey[tempkey]) { 
             Keyboard.release(funkeys[tempkey]);
